@@ -1,7 +1,22 @@
-const notepad = document.getElementById('notepad');
+const notepadEditor = document.getElementById('notepad-editor');
 const notepadStatus = document.getElementById('notepad-status');
+const notepadMetrics = document.getElementById('notepad-metrics');
+const fontFamilySelect = document.getElementById('fontFamily');
+const fontSizeSelect = document.getElementById('fontSize');
+const lineSpacingSelect = document.getElementById('lineSpacing');
+const textColorInput = document.getElementById('textColor');
+const highlightColorInput = document.getElementById('highlightColor');
+const insertImageButton = document.getElementById('insertImageBtn');
+const insertImageInput = document.getElementById('insertImageInput');
+const undoButton = document.getElementById('undoBtn');
+const redoButton = document.getElementById('redoBtn');
+const exportFormatSelect = document.getElementById('exportFormat');
+const exportButton = document.getElementById('exportBtn');
 let notepadSaveTimeout;
 let currentFontSize = 16;
+let currentFontFamily = 'Source Serif 4';
+let currentLineHeight = 1.6;
+let savedSelectionRange = null;
 
 const canvas = document.getElementById('whiteboardCanvas');
 const ctx = canvas ? canvas.getContext('2d') : null;
@@ -35,15 +50,21 @@ let lastX = 0;
 let lastY = 0;
 
 function loadNotepad() {
-    if (!notepad) {
+    if (!notepadEditor) {
         return;
     }
 
     const savedContent = localStorage.getItem('notepad-content');
     const savedFontSize = localStorage.getItem('notepad-font-size');
+    const savedFontFamily = localStorage.getItem('notepad-font-family');
+    const savedLineHeight = localStorage.getItem('notepad-line-height');
 
     if (savedContent) {
-        notepad.value = savedContent;
+        if (/<[a-z][\s\S]*>/i.test(savedContent)) {
+            notepadEditor.innerHTML = savedContent;
+        } else {
+            notepadEditor.textContent = savedContent;
+        }
     }
 
     if (savedFontSize) {
@@ -53,16 +74,31 @@ function loadNotepad() {
         }
     }
 
-    notepad.style.fontSize = currentFontSize + 'px';
+    if (savedFontFamily) {
+        currentFontFamily = savedFontFamily;
+    }
+
+    if (savedLineHeight) {
+        const parsedLineHeight = parseFloat(savedLineHeight);
+        if (!Number.isNaN(parsedLineHeight)) {
+            currentLineHeight = parsedLineHeight;
+        }
+    }
+
+    applyEditorStyle();
+    syncToolbarSelections();
+    updateNotepadMetrics();
 }
 
 function saveNotepad() {
-    if (!notepad) {
+    if (!notepadEditor) {
         return;
     }
 
-    localStorage.setItem('notepad-content', notepad.value);
+    localStorage.setItem('notepad-content', notepadEditor.innerHTML);
     localStorage.setItem('notepad-font-size', currentFontSize);
+    localStorage.setItem('notepad-font-family', currentFontFamily);
+    localStorage.setItem('notepad-line-height', currentLineHeight);
 
     if (notepadStatus) {
         notepadStatus.textContent = 'Saved ✓';
@@ -78,51 +114,82 @@ function saveNotepad() {
     }
 }
 
-if (notepad) {
-    notepad.addEventListener('input', () => {
+if (notepadEditor) {
+    notepadEditor.addEventListener('input', () => {
         if (notepadStatus) {
             notepadStatus.textContent = 'Saving...';
             notepadStatus.classList.remove('saved');
         }
+
+        normalizeNotepadImages();
+        updateNotepadMetrics();
 
         clearTimeout(notepadSaveTimeout);
         notepadSaveTimeout = setTimeout(() => {
             saveNotepad();
         }, 1000);
     });
+
+    ['mouseup', 'keyup', 'mouseleave'].forEach(eventName => {
+        notepadEditor.addEventListener(eventName, () => {
+            saveSelection();
+        });
+    });
+
+    notepadEditor.addEventListener('paste', () => {
+        setTimeout(() => {
+            normalizeNotepadImages();
+            updateNotepadMetrics();
+        }, 0);
+    });
 }
 
 function clearNotepad() {
-    if (!notepad) {
+    if (!notepadEditor) {
         return;
     }
 
     if (confirm('Are you sure you want to clear all notes?')) {
-        notepad.value = '';
+        notepadEditor.innerHTML = '';
+        updateNotepadMetrics();
         saveNotepad();
     }
 }
 
-function downloadNotepad() {
-    if (!notepad) {
+function downloadNotepad(format = 'html') {
+    if (!notepadEditor) {
         return;
     }
 
-    const blob = new Blob([notepad.value], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = 'notepad_' + new Date().toISOString().slice(0, 10) + '.txt';
-    anchor.click();
-    URL.revokeObjectURL(url);
+    const timestamp = new Date().toISOString().slice(0, 10);
+
+    if (format === 'txt') {
+        const text = buildPlainTextExport();
+        triggerDownload(new Blob([text], { type: 'text/plain' }), `notepad_${timestamp}.txt`);
+        return;
+    }
+
+    if (format === 'rtf') {
+        const rtf = buildRtfExport(notepadEditor.innerText);
+        triggerDownload(new Blob([rtf], { type: 'application/rtf' }), `notepad_${timestamp}.rtf`);
+        return;
+    }
+
+    if (format === 'pdf') {
+        openPrintWindow(buildNotepadExport());
+        return;
+    }
+
+    const html = buildNotepadExport();
+    triggerDownload(new Blob([html], { type: 'text/html' }), `notepad_${timestamp}.html`);
 }
 
 function copyNotepad() {
-    if (!notepad) {
+    if (!notepadEditor) {
         return;
     }
 
-    const text = notepad.value;
+    const text = notepadEditor.innerText;
 
     const onSuccess = () => {
         if (notepadStatus) {
@@ -149,19 +216,352 @@ function copyNotepad() {
     }
 }
 
-function changeFontSize(action) {
-    if (!notepad) {
+function applyEditorStyle() {
+    if (!notepadEditor) {
         return;
     }
 
-    if (action === 'increase') {
-        currentFontSize += 2;
-    } else if (action === 'decrease' && currentFontSize > 8) {
-        currentFontSize -= 2;
+    notepadEditor.style.fontSize = currentFontSize + 'px';
+    notepadEditor.style.fontFamily = currentFontFamily;
+    notepadEditor.style.lineHeight = currentLineHeight;
+}
+
+function syncToolbarSelections() {
+    if (fontFamilySelect) {
+        fontFamilySelect.value = currentFontFamily;
+    }
+    if (fontSizeSelect) {
+        fontSizeSelect.value = String(currentFontSize);
+    }
+    if (lineSpacingSelect) {
+        lineSpacingSelect.value = String(currentLineHeight);
+    }
+}
+
+function updateNotepadMetrics() {
+    if (!notepadEditor || !notepadMetrics) {
+        return;
     }
 
-    notepad.style.fontSize = currentFontSize + 'px';
-    localStorage.setItem('notepad-font-size', currentFontSize);
+    const text = notepadEditor.innerText.trim();
+    const wordCount = text ? text.split(/\s+/).filter(Boolean).length : 0;
+    const charCount = text.replace(/\s/g, '').length;
+    const pageCount = Math.max(1, Math.ceil(wordCount / 500));
+
+    notepadMetrics.textContent = `Words: ${wordCount} | Characters: ${charCount} | Page ${pageCount}`;
+}
+
+function saveSelection() {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+        savedSelectionRange = selection.getRangeAt(0);
+    }
+}
+
+function restoreSelection() {
+    const selection = window.getSelection();
+    if (!selection || !savedSelectionRange) {
+        return;
+    }
+    selection.removeAllRanges();
+    selection.addRange(savedSelectionRange);
+}
+
+function runEditorCommand(command, value = null) {
+    if (!notepadEditor) {
+        return;
+    }
+    notepadEditor.focus();
+    restoreSelection();
+    document.execCommand(command, false, value);
+    saveSelection();
+    updateNotepadMetrics();
+}
+
+function applyHighlight(color) {
+    try {
+        runEditorCommand('hiliteColor', color);
+    } catch (error) {
+        runEditorCommand('backColor', color);
+    }
+}
+
+function bindNotepadToolbar() {
+    if (!notepadEditor) {
+        return;
+    }
+
+    document.execCommand('styleWithCSS', false, true);
+
+    document.querySelectorAll('.notepad-toolbar [data-command]').forEach(button => {
+        button.addEventListener('click', () => {
+            runEditorCommand(button.dataset.command);
+        });
+    });
+
+    if (fontFamilySelect) {
+        fontFamilySelect.addEventListener('change', () => {
+            currentFontFamily = fontFamilySelect.value;
+            applyEditorStyle();
+            saveNotepad();
+        });
+    }
+
+    if (fontSizeSelect) {
+        fontSizeSelect.addEventListener('change', () => {
+            const nextSize = parseInt(fontSizeSelect.value, 10);
+            if (!Number.isNaN(nextSize)) {
+                currentFontSize = nextSize;
+                applyEditorStyle();
+                saveNotepad();
+            }
+        });
+    }
+
+    if (lineSpacingSelect) {
+        lineSpacingSelect.addEventListener('change', () => {
+            const nextLineHeight = parseFloat(lineSpacingSelect.value);
+            if (!Number.isNaN(nextLineHeight)) {
+                currentLineHeight = nextLineHeight;
+                applyEditorStyle();
+                saveNotepad();
+            }
+        });
+    }
+
+    if (textColorInput) {
+        textColorInput.addEventListener('input', () => {
+            runEditorCommand('foreColor', textColorInput.value);
+        });
+    }
+
+    if (highlightColorInput) {
+        highlightColorInput.addEventListener('input', () => {
+            applyHighlight(highlightColorInput.value);
+        });
+    }
+
+    if (undoButton) {
+        undoButton.addEventListener('click', () => {
+            runEditorCommand('undo');
+        });
+    }
+
+    if (redoButton) {
+        redoButton.addEventListener('click', () => {
+            runEditorCommand('redo');
+        });
+    }
+
+    if (insertImageButton && insertImageInput) {
+        insertImageButton.addEventListener('click', () => {
+            insertImageInput.click();
+        });
+
+        insertImageInput.addEventListener('change', (event) => {
+            const file = event.target.files && event.target.files[0];
+            if (!file) {
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                runEditorCommand('insertImage', reader.result);
+                setTimeout(() => {
+                    normalizeNotepadImages();
+                }, 0);
+                insertImageInput.value = '';
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    if (exportButton) {
+        exportButton.addEventListener('click', () => {
+            const format = exportFormatSelect ? exportFormatSelect.value : 'html';
+            downloadNotepad(format);
+        });
+    }
+}
+
+function normalizeNotepadImages() {
+    if (!notepadEditor) {
+        return;
+    }
+
+    const images = Array.from(notepadEditor.querySelectorAll('img'));
+    images.forEach(img => {
+        if (img.closest('.image-resize-box')) {
+            return;
+        }
+
+        const wrapper = document.createElement('span');
+        wrapper.className = 'image-resize-box';
+        wrapper.contentEditable = 'false';
+
+        const widthStyle = img.style.width || (img.getAttribute('width') ? `${img.getAttribute('width')}px` : null);
+        wrapper.style.width = widthStyle || '320px';
+
+        img.removeAttribute('width');
+        img.removeAttribute('height');
+
+        img.parentNode.insertBefore(wrapper, img);
+        wrapper.appendChild(img);
+    });
+}
+
+function buildNotepadExport() {
+    const content = notepadEditor ? notepadEditor.innerHTML : '';
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Notepad Export</title>
+</head>
+<body style="font-family: ${currentFontFamily}; font-size: ${currentFontSize}px; line-height: ${currentLineHeight}; color: #111827;">
+${content}
+</body>
+</html>`;
+}
+
+function buildPlainTextExport() {
+    if (!notepadEditor) {
+        return '';
+    }
+
+    const clone = notepadEditor.cloneNode(true);
+    const rawText = serializeNodeToText(clone, 0);
+    const normalized = rawText.replace(/\n{3,}/g, '\n\n').trim() + '\n';
+    return normalized.replace(/\n/g, '\r\n');
+}
+
+function serializeNodeToText(node, depth) {
+    if (!node) {
+        return '';
+    }
+
+    if (node.nodeType === Node.TEXT_NODE) {
+        return node.textContent || '';
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+        return '';
+    }
+
+    const tag = node.tagName.toLowerCase();
+
+    if (tag === 'br') {
+        return '\n';
+    }
+
+    if (tag === 'ol' || tag === 'ul') {
+        return '\n' + serializeListToText(node, depth, tag);
+    }
+
+    if (tag === 'p' || tag === 'div' || tag === 'section' || tag === 'article') {
+        const content = serializeChildrenToText(node, depth).trim();
+        return content ? `${content}\n` : '';
+    }
+
+    return serializeChildrenToText(node, depth);
+}
+
+function serializeChildrenToText(node, depth) {
+    return Array.from(node.childNodes)
+        .map(child => serializeNodeToText(child, depth))
+        .join('');
+}
+
+function needsLeadingNewline(node) {
+    let sibling = node.previousSibling;
+    while (sibling) {
+        if (sibling.nodeType === Node.TEXT_NODE) {
+            if ((sibling.textContent || '').trim().length > 0) {
+                return true;
+            }
+        } else if (sibling.nodeType === Node.ELEMENT_NODE) {
+            const tag = sibling.tagName.toLowerCase();
+            if (tag !== 'br') {
+                return true;
+            }
+        }
+        sibling = sibling.previousSibling;
+    }
+    return false;
+}
+
+function serializeListToText(listNode, depth, tag) {
+    const items = Array.from(listNode.children).filter(child => child.tagName && child.tagName.toLowerCase() === 'li');
+    const lines = [];
+
+    items.forEach((item, index) => {
+        const prefix = tag === 'ol' ? `${index + 1}. ` : '- ';
+        const lineText = serializeListItemText(item, depth).trim();
+        const indent = '  '.repeat(depth);
+        lines.push(`${indent}${prefix}${lineText}`.trimEnd());
+
+        const nestedLists = Array.from(item.children).filter(child => {
+            const childTag = child.tagName ? child.tagName.toLowerCase() : '';
+            return childTag === 'ol' || childTag === 'ul';
+        });
+
+        nestedLists.forEach(nested => {
+            lines.push(serializeListToText(nested, depth + 1, nested.tagName.toLowerCase()).trimEnd());
+        });
+    });
+
+    return lines.filter(Boolean).join('\n') + '\n';
+}
+
+function serializeListItemText(item, depth) {
+    const parts = Array.from(item.childNodes)
+        .filter(child => {
+            if (child.nodeType !== Node.ELEMENT_NODE) {
+                return true;
+            }
+            const tag = child.tagName.toLowerCase();
+            return tag !== 'ol' && tag !== 'ul';
+        })
+        .map(child => serializeNodeToText(child, depth))
+        .join('');
+
+    return parts.replace(/\s+/g, ' ').trim();
+}
+
+function buildRtfExport(text) {
+    const sanitized = text
+        .replace(/\\/g, '\\\\')
+        .replace(/\{/g, '\\{')
+        .replace(/\}/g, '\\}')
+        .replace(/\r?\n/g, '\\par\n');
+
+    return `{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 ${currentFontFamily};}}
+\\fs${Math.round(currentFontSize * 2)}
+${sanitized}
+}`;
+}
+
+function triggerDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+}
+
+function openPrintWindow(html) {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        alert('Popup blocked. Please allow popups to export PDF.');
+        return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
 }
 
 function loadWhiteboard() {
@@ -385,6 +785,8 @@ function switchTab(button, tab) {
 
 window.addEventListener('load', () => {
     loadNotepad();
+    normalizeNotepadImages();
+    bindNotepadToolbar();
     loadWhiteboard();
     initCompilerEmbed();
 });
