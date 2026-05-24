@@ -1,3 +1,15 @@
+:root {
+    --ink: #111827;
+    --muted: #6b7280;
+    --accent: #0f766e;
+    --accent-strong: #0b4f6c;
+    --accent-soft: #d8f3f1;
+    --surface: #fefcf7;
+    --surface-alt: #f4f6f8;
+    --border: #d7dde3;
+    --shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -5,24 +17,25 @@
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: 'Space Grotesk', 'Trebuchet MS', sans-serif;
+    background: radial-gradient(circle at top, #f4f6f8 0%, #e6f4f1 45%, #fefcf7 100%);
     min-height: 100vh;
     padding: 20px;
+    color: var(--ink);
 }
 
 .container {
     max-width: 1400px;
     margin: 0 auto;
-    background: white;
+    background: var(--surface);
     border-radius: 20px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow);
     overflow: hidden;
 }
 
 .header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+    color: #f8fafc;
     padding: 20px 30px;
     text-align: center;
 }
@@ -39,8 +52,8 @@ body {
 
 .tabs {
     display: flex;
-    background: #f5f5f5;
-    border-bottom: 2px solid #ddd;
+    background: var(--surface-alt);
+    border-bottom: 2px solid var(--border);
 }
 
 .tab {
@@ -48,22 +61,22 @@ body {
     padding: 15px;
     text-align: center;
     cursor: pointer;
-    background: #f5f5f5;
+    background: var(--surface-alt);
     border: none;
     font-size: 1.1em;
     font-weight: 600;
-    color: #666;
+    color: var(--muted);
     transition: all 0.3s ease;
 }
 
 .tab:hover {
-    background: #e0e0e0;
+    background: #e8edf1;
 }
 
 .tab.active {
-    background: white;
-    color: #667eea;
-    border-bottom: 3px solid #667eea;
+    background: var(--surface);
+    color: var(--accent-strong);
+    border-bottom: 3px solid var(--accent-strong);
 }
 
 .content {
@@ -87,45 +100,133 @@ body {
     gap: 10px;
     flex-wrap: wrap;
     padding: 10px;
-    background: #f9f9f9;
+    background: var(--surface-alt);
     border-radius: 10px;
+    border: 1px solid var(--border);
+}
+.notepad-toolbar .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
 }
 
-.notepad-toolbar button {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 5px;
-    background: #667eea;
-    color: white;
+.notepad-toolbar .toolbar-actions {
+    margin-left: auto;
+}
+
+.notepad-toolbar label {
+    font-size: 0.85em;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.notepad-toolbar select,
+.notepad-toolbar input[type="color"] {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.85em;
+    background: white;
+    color: var(--ink);
+}
+
+.notepad-toolbar input[type="color"] {
+    width: 34px;
+    height: 30px;
+    padding: 0;
+}
+
+.tool-btn {
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: white;
+    color: var(--ink);
     cursor: pointer;
-    font-size: 0.9em;
-    transition: background 0.3s ease;
+    font-size: 0.85em;
+    font-weight: 600;
+    transition: all 0.2s ease;
 }
 
-.notepad-toolbar button:hover {
-    background: #5568d3;
+.tool-btn:hover {
+    border-color: var(--accent-strong);
+    color: var(--accent-strong);
+    box-shadow: 0 4px 10px rgba(15, 118, 110, 0.15);
 }
 
-#notepad {
+.tool-text {
+    font-size: 1em;
+}
+
+.notepad-editor {
     width: 100%;
-    min-height: 500px;
-    padding: 20px;
+    min-height: 520px;
+    padding: 22px;
     font-size: 16px;
-    font-family: 'Courier New', monospace;
-    border: 2px solid #ddd;
-    border-radius: 10px;
-    resize: vertical;
+    font-family: 'Source Serif 4', 'Times New Roman', serif;
+    border: 2px solid var(--border);
+    border-radius: 12px;
     outline: none;
-    transition: border-color 0.3s ease;
+    background: white;
+    line-height: 1.6;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-#notepad:focus {
-    border-color: #667eea;
+.notepad-editor:focus {
+    border-color: var(--accent-strong);
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+}
+
+.notepad-editor:empty::before {
+    content: attr(data-placeholder);
+    color: #9ca3af;
+}
+
+.notepad-editor img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    margin: 12px 0;
+}
+
+.image-resize-box {
+    display: inline-block;
+    resize: both;
+    overflow: auto;
+    max-width: 100%;
+    border: 1px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 4px;
+    background: #ffffff;
+}
+
+.image-resize-box img {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    border-radius: 10px;
+}
+
+.notepad-status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.notepad-metrics {
+    color: var(--muted);
+    font-size: 0.85em;
 }
 
 .status {
     text-align: right;
-    color: #666;
+    color: var(--muted);
     font-size: 0.85em;
     padding: 5px 0;
 }
@@ -147,8 +248,9 @@ body {
     flex-wrap: wrap;
     align-items: center;
     padding: 15px;
-    background: #f9f9f9;
+    background: var(--surface-alt);
     border-radius: 10px;
+    border: 1px solid var(--border);
 }
 
 .toolbar-group {
@@ -159,14 +261,14 @@ body {
 
 .toolbar-group label {
     font-weight: 600;
-    color: #666;
+    color: var(--muted);
 }
 
 .whiteboard-toolbar button {
     padding: 8px 16px;
     border: none;
     border-radius: 5px;
-    background: #667eea;
+    background: var(--accent);
     color: white;
     cursor: pointer;
     font-size: 0.9em;
@@ -174,13 +276,13 @@ body {
 }
 
 .whiteboard-toolbar button:hover {
-    background: #5568d3;
+    background: var(--accent-strong);
 }
 
 .whiteboard-toolbar input[type="color"] {
     width: 50px;
     height: 35px;
-    border: 2px solid #ddd;
+    border: 2px solid var(--border);
     border-radius: 5px;
     cursor: pointer;
 }
@@ -200,7 +302,7 @@ body {
 
 .canvas-wrapper {
     text-align: center;
-    background: #f5f5f5;
+    background: var(--surface-alt);
     padding: 20px;
     border-radius: 10px;
 }
@@ -218,8 +320,9 @@ body {
     flex-wrap: wrap;
     align-items: center;
     padding: 15px;
-    background: #f9f9f9;
+    background: var(--surface-alt);
     border-radius: 10px;
+    border: 1px solid var(--border);
 }
 
 .code-toolbar-group {
@@ -232,7 +335,7 @@ body {
     padding: 8px 16px;
     border: none;
     border-radius: 5px;
-    background: #667eea;
+    background: var(--accent);
     color: white;
     cursor: pointer;
     font-size: 0.9em;
@@ -240,12 +343,12 @@ body {
 }
 
 .code-toolbar button:hover {
-    background: #5568d3;
+    background: var(--accent-strong);
 }
 
 .code-toolbar label {
     font-weight: 600;
-    color: #666;
+    color: var(--muted);
 }
 
 .code-toolbar select {
@@ -259,7 +362,7 @@ body {
 .code-embed-wrapper {
     width: 100%;
     min-height: 560px;
-    border: 2px solid #ddd;
+    border: 2px solid var(--border);
     border-radius: 10px;
     overflow: hidden;
     background: #000;
@@ -306,8 +409,8 @@ body {
 .footer {
     text-align: center;
     padding: 20px;
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
+    background: rgba(11, 79, 108, 0.08);
+    color: var(--accent-strong);
     font-size: 0.9em;
     margin-top: 20px;
 }
