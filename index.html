@@ -29,6 +29,18 @@
 
         <!-- Notepad Section -->
         <div id="notepad-content" class="content active">
+            <!-- Page Manager -->
+            <div class="page-manager">
+                <div class="page-list-wrapper">
+                    <div class="pages-label">Pages:</div>
+                    <div class="pages-list" id="notepad-pages-list"></div>
+                </div>
+                <div class="page-actions">
+                    <button class="tool-btn" onclick="createNewNotepadPage()">+ New Page</button>
+                    <input type="text" id="notepad-page-name-input" placeholder="Page name" style="display:none; padding: 8px; border-radius: 5px; border: 1px solid #d7dde3;">
+                    <button id="notepad-rename-btn" class="tool-btn" style="display:none;" onclick="renameCurrentNotepadPage()">Rename</button>
+                </div>
+            </div>
             <div class="notepad-container">
                 <div class="notepad-toolbar">
                     <div class="toolbar-group">
@@ -113,6 +125,18 @@
 
         <!-- Whiteboard Section -->
         <div id="whiteboard-content" class="content">
+            <!-- Page Manager -->
+            <div class="page-manager">
+                <div class="page-list-wrapper">
+                    <div class="pages-label">Pages:</div>
+                    <div class="pages-list" id="whiteboard-pages-list"></div>
+                </div>
+                <div class="page-actions">
+                    <button class="tool-btn" onclick="createNewWhiteboardPage()">+ New Page</button>
+                    <input type="text" id="whiteboard-page-name-input" placeholder="Page name" style="display:none; padding: 8px; border-radius: 5px; border: 1px solid #d7dde3;">
+                    <button id="whiteboard-rename-btn" class="tool-btn" style="display:none;" onclick="renameCurrentWhiteboardPage()">Rename</button>
+                </div>
+            </div>
             <div class="whiteboard-container">
                 <div class="whiteboard-toolbar">
                     <div class="toolbar-group">
@@ -170,6 +194,23 @@
                         loading="lazy"
                     ></iframe>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Page Name Dialog -->
+    <div id="pageNameDialog" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="dialogTitle">New Page</h3>
+                <button class="modal-close" onclick="closePageNameDialog()">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="pageNameInput" placeholder="Enter page name" style="width: 100%; padding: 10px; border: 1px solid #d7dde3; border-radius: 6px; font-size: 14px;">
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn cancel" onclick="closePageNameDialog()">Cancel</button>
+                <button class="modal-btn confirm" id="confirmPageNameBtn" onclick="confirmPageName()">Create</button>
             </div>
         </div>
     </div>
