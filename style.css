@@ -88,6 +88,92 @@ body {
     display: block;
 }
 
+/* Page Manager Styles */
+.page-manager {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    padding: 15px;
+    background: var(--surface-alt);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.page-list-wrapper {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    flex: 1;
+}
+
+.pages-label {
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 0.9em;
+}
+
+.pages-list {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.page-btn {
+    padding: 6px 12px;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    background: white;
+    color: var(--ink);
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.page-btn:hover {
+    border-color: var(--accent-strong);
+    color: var(--accent-strong);
+}
+
+.page-btn.active {
+    background: var(--accent-strong);
+    color: white;
+    border-color: var(--accent-strong);
+}
+
+.page-btn .delete-page {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 18px;
+    height: 18px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 0.7em;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.page-btn:hover .delete-page {
+    display: flex;
+}
+
+.page-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
 /* Notepad Styles */
 .notepad-container {
     display: flex;
@@ -398,6 +484,110 @@ body {
     #whiteboardCanvas {
         width: 100% !important;
         height: auto !important;
+    }
+}
+
+/* Modal Dialog Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: none !important;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal.show {
+    display: flex !important;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 400px;
+    width: 90%;
+    padding: 0;
+    overflow: hidden;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-alt);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.2em;
+    color: var(--ink);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    color: var(--muted);
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    color: var(--ink);
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-footer {
+    display: flex;
+    gap: 10px;
+    padding: 15px 20px;
+    border-top: 1px solid var(--border);
+    justify-content: flex-end;
+}
+
+.modal-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.modal-btn.cancel {
+    background: white;
+    color: var(--ink);
+}
+
+.modal-btn.cancel:hover {
+    background: var(--surface-alt);
+}
+
+.modal-btn.confirm {
+    background: var(--accent-strong);
+    color: white;
+    border-color: var(--accent-strong);
+}
+
+.modal-btn.confirm:hover {
+    background: var(--accent);
+}
     }
 
     .code-embed-wrapper,
