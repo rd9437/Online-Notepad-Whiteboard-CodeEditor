@@ -1,3 +1,294 @@
+// ============= PAGE MANAGEMENT SYSTEM =============
+let pendingPageAction = null;
+
+const PAGE_MANAGER = {
+    getCurrentPage: (type) => localStorage.getItem(`${type}-current-page`) || 'Default',
+    setCurrentPage: (type, pageName) => localStorage.setItem(`${type}-current-page`, pageName),
+    getPages: (type) => {
+        const pagesJson = localStorage.getItem(`${type}-pages`);
+        const pages = pagesJson ? JSON.parse(pagesJson) : {};
+        if (!pages['Default']) {
+            pages['Default'] = { content: '', settings: {} };
+        }
+        return pages;
+    },
+    setPages: (type, pages) => localStorage.setItem(`${type}-pages`, JSON.stringify(pages)),
+    getPageData: (type, pageName) => {
+        const pages = PAGE_MANAGER.getPages(type);
+        return pages[pageName] || { content: '', settings: {} };
+    },
+    savePage: (type, pageName, content, settings) => {
+        const pages = PAGE_MANAGER.getPages(type);
+        pages[pageName] = { content, settings };
+        PAGE_MANAGER.setPages(type, pages);
+    },
+    createPage: (type, pageName) => {
+        const pages = PAGE_MANAGER.getPages(type);
+        if (!pages[pageName]) {
+            pages[pageName] = { content: '', settings: {} };
+            PAGE_MANAGER.setPages(type, pages);
+            PAGE_MANAGER.setCurrentPage(type, pageName);
+            return true;
+        }
+        return false;
+    },
+    deletePage: (type, pageName) => {
+        if (pageName === 'Default') return false; // Cannot delete Default page
+        const pages = PAGE_MANAGER.getPages(type);
+        delete pages[pageName];
+        PAGE_MANAGER.setPages(type, pages);
+        const current = PAGE_MANAGER.getCurrentPage(type);
+        if (current === pageName) {
+            PAGE_MANAGER.setCurrentPage(type, 'Default');
+        }
+        return true;
+    },
+    renamePage: (type, oldName, newName) => {
+        if (newName === oldName) return true;
+        if (oldName === 'Default' || PAGE_MANAGER.getPages(type)[newName]) return false;
+        const pages = PAGE_MANAGER.getPages(type);
+        pages[newName] = pages[oldName];
+        delete pages[oldName];
+        PAGE_MANAGER.setPages(type, pages);
+        const current = PAGE_MANAGER.getCurrentPage(type);
+        if (current === oldName) {
+            PAGE_MANAGER.setCurrentPage(type, newName);
+        }
+        return true;
+    }
+};
+
+// Modal dialog functions
+function showPageNameDialog(title, callback) {
+    const dialog = document.getElementById('pageNameDialog');
+    const dialogTitle = document.getElementById('dialogTitle');
+    const input = document.getElementById('pageNameInput');
+    
+    dialogTitle.textContent = title;
+    input.value = '';
+    input.focus();
+    
+    pendingPageAction = callback;
+    dialog.classList.add('show');
+    
+    const confirmBtn = document.getElementById('confirmPageNameBtn');
+    confirmBtn.textContent = title.includes('Rename') ? 'Rename' : 'Create';
+}
+
+function closePageNameDialog() {
+    const dialog = document.getElementById('pageNameDialog');
+    dialog.classList.remove('show');
+    pendingPageAction = null;
+}
+
+function confirmPageName() {
+    const input = document.getElementById('pageNameInput');
+    const name = input.value.trim();
+    
+    if (name) {
+        if (pendingPageAction) {
+            pendingPageAction(name);
+        }
+        closePageNameDialog();
+    } else {
+        alert('Please enter a page name');
+    }
+}
+
+// Allow Enter key to confirm
+document.addEventListener('DOMContentLoaded', () => {
+    const input = document.getElementById('pageNameInput');
+    if (input) {
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                confirmPageName();
+            }
+        });
+    }
+});
+
+// ============= NOTEPAD PAGE MANAGEMENT =============
+function renderNotepadPages() {
+    const pagesList = document.getElementById('notepad-pages-list');
+    if (!pagesList) return;
+    
+    const pages = PAGE_MANAGER.getPages('notepad');
+    const currentPage = PAGE_MANAGER.getCurrentPage('notepad');
+    
+    pagesList.innerHTML = '';
+    Object.keys(pages).forEach(pageName => {
+        const btn = document.createElement('button');
+        btn.className = 'page-btn' + (pageName === currentPage ? ' active' : '');
+        btn.textContent = pageName;
+        btn.onclick = () => switchNotepadPage(pageName);
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-page';
+        deleteBtn.textContent = '×';
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (confirm(`Delete page "${pageName}"?`)) {
+                PAGE_MANAGER.deletePage('notepad', pageName);
+                renderNotepadPages();
+                loadNotepadPage(PAGE_MANAGER.getCurrentPage('notepad'));
+            }
+        };
+        
+        if (pageName !== 'Default') {
+            btn.appendChild(deleteBtn);
+        }
+        pagesList.appendChild(btn);
+    });
+}
+
+function createNewNotepadPage() {
+    showPageNameDialog('New Page', (name) => {
+        if (PAGE_MANAGER.createPage('notepad', name)) {
+            renderNotepadPages();
+            loadNotepadPage(name);
+        } else {
+            alert('Page already exists!');
+        }
+    });
+}
+
+function renameCurrentNotepadPage() {
+    const current = PAGE_MANAGER.getCurrentPage('notepad');
+    if (current === 'Default') {
+        alert('Cannot rename the Default page');
+        return;
+    }
+    showPageNameDialog('Rename Page', (name) => {
+        if (PAGE_MANAGER.renamePage('notepad', current, name)) {
+            renderNotepadPages();
+            loadNotepadPage(name);
+        } else {
+            alert('Could not rename page!');
+        }
+    });
+}
+
+function switchNotepadPage(pageName) {
+    saveNotepad();
+    PAGE_MANAGER.setCurrentPage('notepad', pageName);
+    loadNotepadPage(pageName);
+    renderNotepadPages();
+}
+
+function loadNotepadPage(pageName) {
+    if (!notepadEditor) return;
+    
+    const pageData = PAGE_MANAGER.getPageData('notepad', pageName);
+    const { content, settings } = pageData;
+    
+    notepadEditor.innerHTML = content || '';
+    
+    if (settings.fontSize) {
+        currentFontSize = settings.fontSize;
+        if (fontSizeSelect) fontSizeSelect.value = settings.fontSize;
+    }
+    if (settings.fontFamily) {
+        currentFontFamily = settings.fontFamily;
+        if (fontFamilySelect) fontFamilySelect.value = settings.fontFamily;
+    }
+    if (settings.lineHeight) {
+        currentLineHeight = settings.lineHeight;
+        if (lineSpacingSelect) lineSpacingSelect.value = settings.lineHeight;
+    }
+    
+    applyEditorStyle();
+    normalizeNotepadImages();
+    updateNotepadMetrics();
+}
+
+// ============= WHITEBOARD PAGE MANAGEMENT =============
+function renderWhiteboardPages() {
+    const pagesList = document.getElementById('whiteboard-pages-list');
+    if (!pagesList) return;
+    
+    const pages = PAGE_MANAGER.getPages('whiteboard');
+    const currentPage = PAGE_MANAGER.getCurrentPage('whiteboard');
+    
+    pagesList.innerHTML = '';
+    Object.keys(pages).forEach(pageName => {
+        const btn = document.createElement('button');
+        btn.className = 'page-btn' + (pageName === currentPage ? ' active' : '');
+        btn.textContent = pageName;
+        btn.onclick = () => switchWhiteboardPage(pageName);
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-page';
+        deleteBtn.textContent = '×';
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (confirm(`Delete page "${pageName}"?`)) {
+                PAGE_MANAGER.deletePage('whiteboard', pageName);
+                renderWhiteboardPages();
+                loadWhiteboardPage(PAGE_MANAGER.getCurrentPage('whiteboard'));
+            }
+        };
+        
+        if (pageName !== 'Default') {
+            btn.appendChild(deleteBtn);
+        }
+        pagesList.appendChild(btn);
+    });
+}
+
+function createNewWhiteboardPage() {
+    showPageNameDialog('New Page', (name) => {
+        if (PAGE_MANAGER.createPage('whiteboard', name)) {
+            renderWhiteboardPages();
+            loadWhiteboardPage(name);
+        } else {
+            alert('Page already exists!');
+        }
+    });
+}
+
+function renameCurrentWhiteboardPage() {
+    const current = PAGE_MANAGER.getCurrentPage('whiteboard');
+    if (current === 'Default') {
+        alert('Cannot rename the Default page');
+        return;
+    }
+    showPageNameDialog('Rename Page', (name) => {
+        if (PAGE_MANAGER.renamePage('whiteboard', current, name)) {
+            renderWhiteboardPages();
+            loadWhiteboardPage(name);
+        } else {
+            alert('Could not rename page!');
+        }
+    });
+}
+
+function switchWhiteboardPage(pageName) {
+    saveWhiteboard();
+    PAGE_MANAGER.setCurrentPage('whiteboard', pageName);
+    loadWhiteboardPage(pageName);
+    renderWhiteboardPages();
+}
+
+function loadWhiteboardPage(pageName) {
+    if (!ctx || !canvas) return;
+    
+    const pageData = PAGE_MANAGER.getPageData('whiteboard', pageName);
+    const imageData = pageData.content;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    if (imageData) {
+        const img = new Image();
+        img.onload = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+        };
+        img.src = imageData;
+    }
+}
+
+// ============= CODE EDITOR PAGE MANAGEMENT - REMOVED =============
+
 const notepadEditor = document.getElementById('notepad-editor');
 const notepadStatus = document.getElementById('notepad-status');
 const notepadMetrics = document.getElementById('notepad-metrics');
@@ -54,40 +345,10 @@ function loadNotepad() {
         return;
     }
 
-    const savedContent = localStorage.getItem('notepad-content');
-    const savedFontSize = localStorage.getItem('notepad-font-size');
-    const savedFontFamily = localStorage.getItem('notepad-font-family');
-    const savedLineHeight = localStorage.getItem('notepad-line-height');
-
-    if (savedContent) {
-        if (/<[a-z][\s\S]*>/i.test(savedContent)) {
-            notepadEditor.innerHTML = savedContent;
-        } else {
-            notepadEditor.textContent = savedContent;
-        }
-    }
-
-    if (savedFontSize) {
-        const parsedSize = parseInt(savedFontSize, 10);
-        if (!Number.isNaN(parsedSize)) {
-            currentFontSize = parsedSize;
-        }
-    }
-
-    if (savedFontFamily) {
-        currentFontFamily = savedFontFamily;
-    }
-
-    if (savedLineHeight) {
-        const parsedLineHeight = parseFloat(savedLineHeight);
-        if (!Number.isNaN(parsedLineHeight)) {
-            currentLineHeight = parsedLineHeight;
-        }
-    }
-
-    applyEditorStyle();
+    renderNotepadPages();
+    const pageName = PAGE_MANAGER.getCurrentPage('notepad');
+    loadNotepadPage(pageName);
     syncToolbarSelections();
-    updateNotepadMetrics();
 }
 
 function saveNotepad() {
@@ -95,10 +356,15 @@ function saveNotepad() {
         return;
     }
 
-    localStorage.setItem('notepad-content', notepadEditor.innerHTML);
-    localStorage.setItem('notepad-font-size', currentFontSize);
-    localStorage.setItem('notepad-font-family', currentFontFamily);
-    localStorage.setItem('notepad-line-height', currentLineHeight);
+    const pageName = PAGE_MANAGER.getCurrentPage('notepad');
+    const content = notepadEditor.innerHTML;
+    const settings = {
+        fontSize: currentFontSize,
+        fontFamily: currentFontFamily,
+        lineHeight: currentLineHeight
+    };
+    
+    PAGE_MANAGER.savePage('notepad', pageName, content, settings);
 
     if (notepadStatus) {
         notepadStatus.textContent = 'Saved ✓';
@@ -569,15 +835,9 @@ function loadWhiteboard() {
         return;
     }
 
-    const savedCanvas = localStorage.getItem('whiteboard-canvas');
-    if (savedCanvas) {
-        const img = new Image();
-        img.onload = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0);
-        };
-        img.src = savedCanvas;
-    }
+    renderWhiteboardPages();
+    const pageName = PAGE_MANAGER.getCurrentPage('whiteboard');
+    loadWhiteboardPage(pageName);
 }
 
 function saveWhiteboard() {
@@ -585,7 +845,9 @@ function saveWhiteboard() {
         return;
     }
 
-    localStorage.setItem('whiteboard-canvas', canvas.toDataURL());
+    const pageName = PAGE_MANAGER.getCurrentPage('whiteboard');
+    const imageData = canvas.toDataURL();
+    PAGE_MANAGER.savePage('whiteboard', pageName, imageData, {});
 
     if (whiteboardStatus) {
         whiteboardStatus.textContent = 'Saved ✓';
