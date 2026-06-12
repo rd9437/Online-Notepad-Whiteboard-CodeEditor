@@ -485,6 +485,11 @@ body {
         width: 100% !important;
         height: auto !important;
     }
+
+    .code-embed-wrapper,
+    .code-embed-wrapper iframe {
+        min-height: 420px;
+    }
 }
 
 /* Modal Dialog Styles */
