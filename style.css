@@ -593,13 +593,11 @@ body {
 .modal-btn.confirm:hover {
     background: var(--accent);
 }
-    }
 
     .code-embed-wrapper,
     .code-embed-wrapper iframe {
         min-height: 420px;
     }
-}
 
 .footer {
     text-align: center;
